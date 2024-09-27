@@ -1,22 +1,16 @@
 {
   "manifest_version": 3,
-  "name": "Scramble",
+  "name": "Anuggaha",
   "version": "1.0",
-  "description": "An Open-Source Grammarly alternative",
+  "description": "Anuggaha assistant",
   "icons": {
-    "256": "assets/logo256.png"
+    "256": "assets/128x128@2x.png"
   },
-  "permissions": [
-    "activeTab",
-    "scripting",
-    "storage",
-    "contextMenus"
-  ],
-  "host_permissions": [
-    "https://api.openai.com/*"
-  ],
+  "permissions": ["activeTab", "scripting", "storage", "contextMenus"],
+  "host_permissions": ["https://generativelanguage.googleapis.com/*"],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "content_scripts": [
     {
@@ -27,6 +21,5 @@
   "options_page": "options.html",
   "action": {
     "default_popup": "popup.html"
-  },
-  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3nzJuYJqG8x3ED6uT5+dsP9CpCNAVVxfSLA6AgOmn4zOxUoWT8OEmOu8AYS8NpBiQbAcOqIkrkjhClOWRkYpwg7NM4rRBHLGGOpTvKw1rq+4G1GAMD2OgqmlkRlUvN6YMaX12Vmdv8J+NGx61yPaFFfAeAtIvP0a4qi6GR6f0o84YJ99GURRpjGLnJjoAh3hbOKzPvWTa5Fu1t2mAUJaCYuwvTSMh6XhHPyU9tvUVfKIpLYKwY+pEvVhCYIVvWZ/9ylu75LeThEKnfB7cIWy+a+xrldqyc8EtdCoqgk7JGyI2n5vEwzOlod39tyTr/iXeoGFHQ0aZtpBSUyX4unDAQIDAQAB"
+  }
 }

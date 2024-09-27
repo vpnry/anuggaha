@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scramble Options</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Anuggaha Options</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -11,34 +12,41 @@
             margin: 0 auto;
             padding: 20px;
         }
+
         h1 {
             color: #333;
         }
+
         label {
             display: block;
             margin-top: 20px;
         }
+
         input[type="text"] {
             width: 100%;
             padding: 5px;
             border-radius: 8px;
             margin-top: 5px;
         }
+
         button {
             margin-top: 20px;
             padding: 10px 20px;
-            background-color: #2DD4BF;
+            background-color: #2dd4bf;
             border-radius: 8px;
             color: white;
             border: none;
             cursor: pointer;
         }
+
         button:hover {
             opacity: 0.8;
         }
+
         #status {
             margin-top: 20px;
         }
+
         select {
             width: 100%;
             padding: 5px;
@@ -46,14 +54,31 @@
         }
     </style>
 </head>
+
 <body>
-    <h1>Scramble Options</h1>
-    <label for="openaiApiKey">
-        OpenAI API Key:
-        <input type="text" id="openaiApiKey" placeholder="Enter your OpenAI API key">
+    <h1>Anuggaha Options</h1>
+    <label for="googleApiStudioKey">
+        Google AI Studio Key:
+        <input type="text" id="googleApiStudioKey" placeholder="Enter your Google AI Studio key" />
     </label>
+    <br>
+    <div id="statusKey" style="color: brown; font-weight: bold;"></div>
+
+    <label for="aiModel">Select an AI Model:</label>
+    <select id="aiModel">
+    </select>
+    <br><br>
+
     <button id="save">Save</button>
-    <div id="status"></div>
+    <div id="statusModel"></div>
+
+    <ul>
+        <li>You can get (currently) free API keys from <a href="https://aistudio.google.com/app/apikey"
+                style="text-decoration: none">https://aistudio.google.com/app/apikey</a></li>
+        <li>For both free and paid plans, there are <a href="https://ai.google.dev/pricing"
+                style="text-decoration: none">rate limits here</a>.</li>
+    </ul>
     <script src="options.js"></script>
 </body>
+
 </html>
