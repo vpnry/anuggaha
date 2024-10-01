@@ -1,193 +1,206 @@
-// Define default prompts
-const DEFAULT_PROMPTS = [
-  { id: 'fix_grammar', title: 'Fix spelling and grammar', prompt: 'Please correct any spelling errors and grammatical mistakes in the following text:' },
-  { id: 'improve_writing', title: 'Improve writing', prompt: 'Please enhance the following text to improve its clarity, flow, and overall quality:' },
-  { id: 'make_professional', title: 'Make more professional', prompt: 'Please rewrite the following text to make it more formal and suitable for a professional context:' },
-  { id: 'simplify', title: 'Simplify text', prompt: 'Please simplify the following text to make it easier to understand, using simpler words and shorter sentences:' },
-  { id: 'summarize', title: 'Summarize text', prompt: 'Please provide a concise summary of the following text, capturing the main points:' },
-  { id: 'expand', title: 'Expand text', prompt: 'Please elaborate on the following text, adding more details and examples to make it more comprehensive:' },
-  { id: 'bullet_points', title: 'Convert to bullet points', prompt: 'Please convert the following text into a clear and concise bullet-point list:' },
-];
+import { DEFAULT_PROMPTS } from "./defaultPrompts.js"
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "./GoogleGenerativeAI.mjs"
+
+const safetySettingsGemini = [
+  {
+    category: "HARM_CATEGORY_CIVIC_INTEGRITY",
+    threshold: "BLOCK_NONE",
+  },
+  {
+    category: "HARM_CATEGORY_HATE_SPEECH",
+    threshold: "BLOCK_NONE",
+  },
+  {
+    category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+    threshold: "BLOCK_NONE",
+  },
+  {
+    category: "HARM_CATEGORY_HARASSMENT",
+    threshold: "BLOCK_NONE",
+  },
+  {
+    category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+    threshold: "BLOCK_NONE",
+  },
+]
+
+let selectedAiModel = "gemini-1.5-pro"
 
 // Create context menu items
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
-    id: 'scramble',
-    title: 'Scramble',
-    contexts: ['selection'],
-  });
+    id: "anuggaha",
+    title: "Anuggaha",
+    contexts: ["selection"],
+  })
 
-  DEFAULT_PROMPTS.forEach(prompt => {
+  DEFAULT_PROMPTS.forEach((prompt) => {
     chrome.contextMenus.create({
       id: prompt.id,
-      parentId: 'scramble',
+      parentId: "anuggaha",
       title: prompt.title,
-      contexts: ['selection'],
-    });
-  });
-});
+      contexts: ["selection"],
+    })
+  })
+})
 
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (DEFAULT_PROMPTS.some(prompt => prompt.id === info.menuItemId)) {
-    chrome.tabs.sendMessage(tab.id, {
-      action: 'enhanceText',
-      promptId: info.menuItemId,
-      selectedText: info.selectionText,
-    });
+  if (DEFAULT_PROMPTS.some((prompt) => prompt.id === info.menuItemId)) {
+    const prompt = DEFAULT_PROMPTS.find((prompt) => prompt.id === info.menuItemId)
+    if (prompt) {
+      if (!prompt.id.startsWith("divider")) {
+        chrome.tabs.sendMessage(tab.id, {
+          action: "enhanceText",
+          promptId: info.menuItemId,
+          selectedText: info.selectionText,
+        })
+      }
+    }
   }
-});
+})
 
 // Handle messages from content script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'enhanceText') {
+  if (request.action === "enhanceText") {
+    console.log(request.promptId, request.selectedText)
     enhanceTextWithRateLimit(request.promptId, request.selectedText)
-      .then(enhancedText => {
-        sendResponse({ success: true, enhancedText });
+      .then((enhancedText) => {
+        sendResponse({ success: true, enhancedText })
       })
-      .catch(error => {
-        console.error('Error enhancing text:', error);
-        sendResponse({ success: false, error: error.message });
-      });
-    return true; // Indicates that the response is asynchronous
+      .catch((error) => {
+        console.error("Error enhancing text:", error)
+        sendResponse({ success: false, error: error.message })
+      })
+    return true // Indicates that the response is asynchronous
   }
-});
+})
 
-// Function to interact with various LLM APIs
-async function enhanceTextWithLLM(promptId, text) {
-  // Retrieve settings from storage
-  const { llmProvider, openaiApiKey, anthropicApiKey, ollamaEndpoint } = await chrome.storage.sync.get(['llmProvider', 'openaiApiKey', 'anthropicApiKey', 'ollamaEndpoint']);
-  
-  const prompt = DEFAULT_PROMPTS.find(p => p.id === promptId).prompt;
-  const fullPrompt = `${prompt}:\n\n${text}`;
+async function sendPromptToGemini(apiKey, model, safetySettingsInput, systemPromptInput, textInput) {
+  const genAI = new GoogleGenerativeAI(apiKey)
 
-  switch (llmProvider) {
-    case 'openai':
-      return await enhanceWithOpenAI(openaiApiKey, fullPrompt);
-    case 'anthropic':
-      return await enhanceWithAnthropic(anthropicApiKey, fullPrompt);
-    case 'ollama':
-      return await enhanceWithOllama(ollamaEndpoint, fullPrompt);
-    default:
-      throw new Error('Invalid LLM provider selected');
+  const modelPost = genAI.getGenerativeModel({
+    model: model,
+    // systemInstruction: systemPromptInput,
+    safetySettings: safetySettingsInput,
+  })
+
+  try {
+    const prompt = `${systemPromptInput}\n\n${textInput}`
+    const result = await modelPost.generateContent(prompt)
+
+    if (!result.response) {
+      const errorBody = "No response propert in the response"
+      throw new Error(`HTTP error! status: ${result.response.status}, body: ${errorBody}`)
+    }
+
+    if (result.response.text) {
+      return { ok: true, text: result.response.text(), fullAIRes: result, model: model }
+    } else {
+      throw new Error("Unexpected response structure")
+    }
+  } catch (error) {
+    console.error("Error:", error)
+    throw error
   }
 }
 
-async function enhanceWithOpenAI(apiKey, prompt) {
-  if (!apiKey) {
-    throw new Error('OpenAI API key not set. Please set it in the extension options.');
+async function sendPromptToGemini2(apiKey, model, safetySettingsInput, systemPromptInput, textInput) {
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
+
+  let requestBody = {
+    system_instruction: {
+      parts: { text: systemPromptInput },
+    },
+    contents: [
+      {
+        role: "user",
+        parts: [{ text: textInput }],
+      },
+    ],
+    safetySettings: safetySettingsInput,
   }
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
+    const response = await fetch(`${apiUrl}?key=${apiKey}`, {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${encodeURIComponent(apiKey)}`,
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: 'You are a helpful assistant.' },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 1000,
-        temperature: 0.7,
-      }),
-    });
+      body: JSON.stringify(requestBody),
+    })
 
     if (!response.ok) {
-      throw new Error('API request failed');
+      const errorBody = await response.text()
+      throw new Error(`HTTP error! status: ${response.status}, body: ${errorBody}`)
     }
 
-    const data = await response.json();
-    return data.choices[0].message.content.trim();
+    const data = await response.json()
+    console.log("API Response:", data)
+    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
+      const result = data.candidates[0].content.parts[0].text
+      return { ok: true, text: result, fullAIRes: data }
+    } else {
+      throw new Error("Unexpected response structure")
+    }
   } catch (error) {
-    throw new Error(`Failed to enhance text with OpenAI. Error: ${error.message}`);
+    console.error("Error:", error)
+    throw error
   }
 }
 
-async function enhanceWithAnthropic(apiKey, prompt) {
-  if (!apiKey) {
-    throw new Error('Anthropic API key not set. Please set it in the extension options.');
+async function enhanceTextWithLLM(promptId, textInput) {
+  const { googleApiStudioKey } = await chrome.storage.sync.get(["googleApiStudioKey"])
+
+  if (!googleApiStudioKey) {
+    throw new Error("Google AI Studio key not set. Please set it in the extension options.")
   }
+  // update selected model
+  chrome.storage.sync.get(["aiModel"], (data) => {
+    if (data.aiModel) {
+      selectedAiModel = data.aiModel
+    }
+  })
+
+  const systemPrompt = DEFAULT_PROMPTS.find((p) => p.id === promptId).prompt
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/complete', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': apiKey,
-      },
-      body: JSON.stringify({
-        prompt: `Human: ${prompt}\n\nAssistant:`,
-        model: 'claude-2',
-        max_tokens_to_sample: 1000,
-        temperature: 0.7,
-      }),
-    });
+    const response = await sendPromptToGemini(googleApiStudioKey, selectedAiModel, safetySettingsGemini, systemPrompt, textInput)
 
     if (!response.ok) {
-      throw new Error('API request failed');
+      throw new Error("API request failed")
     }
-
-    const data = await response.json();
-    return data.completion.trim();
-  } catch (error) {
-    throw new Error(`Failed to enhance text with Anthropic. Error: ${error.message}`);
-  }
-}
-
-async function enhanceWithOllama(endpoint, prompt) {
-  if (!endpoint) {
-    throw new Error('Ollama endpoint not set. Please set it in the extension options.');
-  }
-
-  try {
-    const response = await fetch(`${endpoint}/api/generate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'llama2',
-        prompt: prompt,
-        stream: false,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error('API request failed');
+    return {
+      text: response.text,
+      model: selectedAiModel,
+      fullAIRes: response.fullAIRes,
     }
-
-    const data = await response.json();
-    return data.response.trim();
   } catch (error) {
-    throw new Error(`Failed to enhance text with Ollama. Error: ${error.message}`);
+    throw new Error(`Failed to enhance text. Please check your API key and try again. Error: ${error.message}`)
   }
 }
 
 // Implement rate limiting
-const MAX_REQUESTS_PER_MINUTE = 10;
-let requestCount = 0;
-let lastResetTime = Date.now();
+const MAX_REQUESTS_PER_MINUTE = 10
+let requestCount = 0
+let lastResetTime = Date.now()
 
 function checkRateLimit() {
-  const now = Date.now();
+  const now = Date.now()
   if (now - lastResetTime > 60000) {
-    requestCount = 0;
-    lastResetTime = now;
+    requestCount = 0
+    lastResetTime = now
   }
 
   if (requestCount >= MAX_REQUESTS_PER_MINUTE) {
-    throw new Error('Rate limit exceeded. Please try again later.');
+    throw new Error("Rate limit exceeded. Please try again later.")
   }
 
-  requestCount++;
+  requestCount++
 }
 
 // Wrap the enhanceTextWithLLM function with rate limiting
 const enhanceTextWithRateLimit = async (promptId, text) => {
-  checkRateLimit();
-  return enhanceTextWithLLM(promptId, text);
-};
+  checkRateLimit()
+  return enhanceTextWithLLM(promptId, text)
+}
