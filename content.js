@@ -17,12 +17,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // Function to enhance selected text
 async function enhanceSelectedText(promptId, selectedText) {
-  console.log("[ANUGGAHA] task:", promptId, "Selected text:", selectedText)
+  const lineBreakText = selectedText.replaceAll("  ", "\n<br><br>")
+  console.log("[ANUGGAHA] task:", promptId, "Selected text:", lineBreakText)
   try {
     const response = await chrome.runtime.sendMessage({
       action: "enhanceText",
       promptId: promptId,
-      selectedText: selectedText,
+      selectedText: lineBreakText,
     })
 
     if (response.success) {
@@ -45,7 +46,22 @@ function replaceSelectedText(enhancedText) {
   if (selection.rangeCount > 0) {
     const range = selection.getRangeAt(0)
     range.deleteContents()
-    range.insertNode(document.createTextNode(enhancedText))
+
+    // Create a temporary container
+    const tempDiv = document.createElement("div")
+    tempDiv.innerHTML = enhancedText
+
+    // Create a document fragment to hold all nodes
+    const fragment = document.createDocumentFragment()
+
+    // Move all nodes to the fragment (maintains order)
+    while (tempDiv.firstChild) {
+      fragment.appendChild(tempDiv.firstChild)
+    }
+
+    // Insert the entire fragment at once
+    range.insertNode(fragment)
+
     selection.removeAllRanges()
   }
 }

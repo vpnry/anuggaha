@@ -118,7 +118,7 @@ function updateAiModelSelect() {
       document.getElementById("aiModel").value = data.aiModel
     } else {
       // Select the first pro-exp model if available
-      const proExpModel = markedModels.find(([key]) => key.includes("pro-exp"))
+      const proExpModel = markedModels.find(([key]) => key.includes("-exp"))
       if (proExpModel) {
         document.getElementById("aiModel").value = proExpModel[0]
         chrome.storage.sync.set({ aiModel: proExpModel[0] }, () => {
