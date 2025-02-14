@@ -1,5 +1,4 @@
-// This file is from: https://cdn.jsdelivr.net/npm/@google/generative-ai@0.20.0/dist/index.mjs
-
+// This file is from: https://cdn.jsdelivr.net/npm/@google/generative-ai@0.21.0/dist/index.mjs
 /**
  * Contains the list of OpenAPI data types
  * as defined by https://swagger.io/docs/specification/data-models/data-types/
@@ -204,6 +203,17 @@ var FunctionCallingMode
   // not passing any function declarations.
   FunctionCallingMode["NONE"] = "NONE"
 })(FunctionCallingMode || (FunctionCallingMode = {}))
+/**
+ * The mode of the predictor to be used in dynamic retrieval.
+ * @public
+ */
+var DynamicRetrievalMode
+;(function (DynamicRetrievalMode) {
+  // Unspecified function calling mode. This value should not be used.
+  DynamicRetrievalMode["MODE_UNSPECIFIED"] = "MODE_UNSPECIFIED"
+  // Run retrieval only when system decides it is necessary.
+  DynamicRetrievalMode["MODE_DYNAMIC"] = "MODE_DYNAMIC"
+})(DynamicRetrievalMode || (DynamicRetrievalMode = {}))
 
 /**
  * @license
@@ -282,7 +292,7 @@ const DEFAULT_API_VERSION = "v1beta"
  * We can't `require` package.json if this runs on web. We will use rollup to
  * swap in the version number here at build time.
  */
-const PACKAGE_VERSION = "0.20.0"
+const PACKAGE_VERSION = "0.21.0"
 const PACKAGE_LOG_HEADER = "genai-js"
 var Task
 ;(function (Task) {
@@ -758,6 +768,7 @@ function aggregateResponses(responses) {
         }
         // Keep overwriting, the last one will be final
         aggregatedResponse.candidates[i].citationMetadata = candidate.citationMetadata
+        aggregatedResponse.candidates[i].groundingMetadata = candidate.groundingMetadata
         aggregatedResponse.candidates[i].finishReason = candidate.finishReason
         aggregatedResponse.candidates[i].finishMessage = candidate.finishMessage
         aggregatedResponse.candidates[i].safetyRatings = candidate.safetyRatings
@@ -1440,6 +1451,7 @@ class GoogleGenerativeAI {
 export {
   BlockReason,
   ChatSession,
+  DynamicRetrievalMode,
   ExecutableCodeLanguage,
   FinishReason,
   FunctionCallingMode,

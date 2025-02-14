@@ -1,4 +1,6 @@
-const filterModelStartWith = "models/gemini-2.0-"
+const filterModelStartWith = "models/gemini-exp-"
+
+// const filterModelStartWith = "models/gemini-2.0-"
 const markedKey = "**** saved key ****"
 
 let aiModels = {
@@ -57,13 +59,19 @@ async function restoreOptions() {
       const modelList = await fetchModelList(items.googleApiStudioKey)
       if (modelList.models) {
         const _aiModels = {}
+        const allModelLogs = []
         modelList.models.forEach((model) => {
-          const mName = model.name.replace("models/", "")
-          _aiModels[mName] = model.displayName + " = " + mName
+          allModelLogs.push(model.name)
+          if (model.name.startsWith(filterModelStartWith)) {
+            const mName = model.name.replace("models/", "")
+            _aiModels[mName] = model.displayName + " = " + mName
+          }
         })
         aiModels = _aiModels
         // Update the select element with the new models
         updateAiModelSelect()
+
+        console.log(allModelLogs)
       }
     } else {
       updateAiModelSelect()
@@ -75,60 +83,47 @@ function updateAiModelSelect() {
   const aiModelSelect = document.getElementById("aiModel")
   aiModelSelect.innerHTML = ""
 
-  // Split models into marked and non-marked
-  const modelEntries = Object.entries(aiModels)
-  const markedModels = modelEntries.filter(([key]) => key.startsWith(filterModelStartWith.replace("models/", "")))
-  const otherModels = modelEntries.filter(([key]) => !key.startsWith(filterModelStartWith.replace("models/", "")))
-
-  // Sort both arrays
-  markedModels.sort(([, a], [, b]) => a.localeCompare(b))
-  otherModels.sort(([, a], [, b]) => a.localeCompare(b))
-
-  // Create optgroup for marked models
-  if (markedModels.length > 0) {
-    const markedGroup = document.createElement("optgroup")
-    markedGroup.label = "Recommended Models"
-    markedModels.forEach(([key, value]) => {
-      const option = document.createElement("option")
-      option.value = key
-      option.text = value
-      markedGroup.appendChild(option)
-    })
-    aiModelSelect.appendChild(markedGroup)
+  for (const model in aiModels) {
+    const option = document.createElement("option")
+    option.value = model
+    option.text = aiModels[model]
+    aiModelSelect.add(option)
   }
-
-  // Create optgroup for other models
-  if (otherModels.length > 0) {
-    const otherGroup = document.createElement("optgroup")
-    otherGroup.label = "Other Models"
-    otherModels.forEach(([key, value]) => {
-      const option = document.createElement("option")
-      option.value = key
-      option.text = value
-      otherGroup.appendChild(option)
-    })
-    aiModelSelect.appendChild(otherGroup)
-  }
-
   const status = document.getElementById("statusKey")
-  status.textContent = "Recommended: select the latest pro-exp model for up to date performance."
+  status.textContent = "Recommended: select the latest pro-exp model for an up to date performance.   "
 
   chrome.storage.sync.get(["aiModel"], (data) => {
     if (data.aiModel && aiModels[data.aiModel]) {
+      // check stored for model
       document.getElementById("aiModel").value = data.aiModel
     } else {
-      // Select the first pro-exp model if available
-      const proExpModel = markedModels.find(([key]) => key.includes("pro-exp"))
-      if (proExpModel) {
-        document.getElementById("aiModel").value = proExpModel[0]
-        chrome.storage.sync.set({ aiModel: proExpModel[0] }, () => {
-          console.log("Saved default model", proExpModel[0])
-        })
-      } else if (markedModels.length > 0) {
-        // Fall back to first marked model
-        document.getElementById("aiModel").value = markedModels[0][0]
-        chrome.storage.sync.set({ aiModel: markedModels[0][0] }, () => {
-          console.log("Saved default model", markedModels[0][0])
+      // use and save the first model in aiModels
+      const modelEntries = Object.entries(aiModels)
+      if (modelEntries.length > 1) {
+        const sortedAiModels = modelEntries
+          .sort(([, aValue], [, bValue]) => aValue.localeCompare(bValue)) // Sort by display name
+          .reduce((obj, [key, value]) => {
+            obj[key] = value
+            return obj
+          }, {})
+
+        console.log("raw", aiModels)
+        console.log("sorted", sortedAiModels)
+
+        const modelKeys = Object.keys(sortedAiModels)
+        let chooseModel = modelKeys[0]
+
+        // Find the last key with "pro-exp" and select it
+        for (let i = modelKeys.length - 1; i >= 0; i--) {
+          if (modelKeys[i].includes("pro-exp")) {
+            chooseModel = modelKeys[i]
+            break
+          }
+        }
+
+        document.getElementById("aiModel").value = chooseModel
+        chrome.storage.sync.set({ aiModel: chooseModel }, () => {
+          console.log("Saved default model", chooseModel)
         })
       }
     }
