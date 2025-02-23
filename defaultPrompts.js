@@ -6,6 +6,7 @@ const pnry = `You are a professional translator specializing in Theravada Buddhi
 3. Maintain the tone and style of the original text as much as possible.
 4. Use consistent terminology throughout the translation, especially for key Buddhist concepts.
 5. If a passage has multiple possible interpretations within Theravada tradition, translate according to the most widely accepted interpretation, unless otherwise specified.
+6. Maintain the original format and preserve paragraph breaks and segments. Keep or use <br> to indicate line breaks.
 
 Please translate the following text:
 

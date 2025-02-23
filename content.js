@@ -3,7 +3,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "enhanceText") {
     enhanceSelectedText(request.promptId, request.selectedText)
       .then((enhancedText) => {
-        replaceSelectedText(enhancedText)
+        appendTranslatedText(enhancedText)
         sendResponse({ success: true })
       })
       .catch((error) => {
@@ -40,29 +40,94 @@ async function enhanceSelectedText(promptId, selectedText) {
   }
 }
 
-// Function to replace the selected text with enhanced text
-function replaceSelectedText(enhancedText) {
+// Function to append translated text in a new div
+function appendTranslatedText(translatedText) {
   const selection = window.getSelection()
   if (selection.rangeCount > 0) {
     const range = selection.getRangeAt(0)
-    range.deleteContents()
+    const container = range.commonAncestorContainer
 
-    // Create a temporary container
-    const tempDiv = document.createElement("div")
-    tempDiv.innerHTML = enhancedText
-
-    // Create a document fragment to hold all nodes
-    const fragment = document.createDocumentFragment()
-
-    // Move all nodes to the fragment (maintains order)
-    while (tempDiv.firstChild) {
-      fragment.appendChild(tempDiv.firstChild)
+    // Find the common parent container that contains the entire selection
+    let targetElement = container
+    if (container.nodeType === 3) {
+      // Text node
+      targetElement = container.parentElement
     }
 
-    // Insert the entire fragment at once
-    range.insertNode(fragment)
+    // Get all selected nodes
+    const selectedNodes = []
+    const nodeIterator = document.createNodeIterator(targetElement, NodeFilter.SHOW_ELEMENT, {
+      acceptNode: function (node) {
+        return range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
+      },
+    })
 
-    selection.removeAllRanges()
+    let currentNode
+    while ((currentNode = nodeIterator.nextNode())) {
+      selectedNodes.push(currentNode)
+    }
+
+    // Find the last selected block element
+    const lastSelectedBlock = selectedNodes.reverse().find((node) => /^(p|div|article|section|main|h[1-6]|li)$/i.test(node.tagName)) || targetElement
+
+    // Create translation div
+    const translationDiv = document.createElement("div")
+    translationDiv.classList.add("anuggaha-translation")
+    translationDiv.style.cssText = `
+      margin: 10px 0;
+      padding: 10px;
+      background-color: #f8f9fa;
+      border-left: 3px solid #2DD4BF;
+      font-family: Arial, sans-serif;
+      position: relative;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      border-radius: 4px;
+    `
+
+    // Add close button
+    const closeButton = document.createElement("button")
+    closeButton.innerHTML = "×"
+    closeButton.style.cssText = `
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: #666;
+      padding: 0 5px;
+      line-height: 1;
+    `
+    closeButton.onclick = () => translationDiv.remove()
+
+    // Add translation content
+    const content = document.createElement("div")
+    content.innerHTML = translatedText
+    content.style.cssText = `
+      margin-right: 20px;
+      line-height: 1.5;
+    `
+
+    // Assemble the translation div
+    translationDiv.appendChild(closeButton)
+    translationDiv.appendChild(content)
+
+    // Insert after the last selected block
+    try {
+      if (lastSelectedBlock === document || lastSelectedBlock === document.documentElement) {
+        document.body.appendChild(translationDiv)
+      } else {
+        if (lastSelectedBlock.nextSibling) {
+          lastSelectedBlock.parentNode.insertBefore(translationDiv, lastSelectedBlock.nextSibling)
+        } else {
+          lastSelectedBlock.parentNode.appendChild(translationDiv)
+        }
+      }
+    } catch (error) {
+      console.error("[ANUGGAHA] Error appending translation:", error)
+      document.body.appendChild(translationDiv)
+    }
   }
 }
 
